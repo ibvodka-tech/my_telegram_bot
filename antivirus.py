@@ -7,8 +7,9 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command, CommandStart
 from dotenv import load_dotenv
 
-# 1. Загружаем переменные из .env
-load_dotenv()
+# 1. Загружаем переменные из .env принудительно
+load_dotenv(override=True)
+
 
 TELEGRAM_BOT_TOKEN = os.getenv("telegram_bot_TOKEN")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
