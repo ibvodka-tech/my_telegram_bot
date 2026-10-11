@@ -1,101 +1,97 @@
-import telebot
+import os
+import threading
 import time
+from dotenv import load_dotenv
+import telebot
 
-# СЮДА ВСТАВЛЯЙ ТОКЕН ИЗ BOTFATHER
-TOKEN = '8601249175:AAE7oWZYzDq_izIBDHCOIBSaIa2c1ntLRQI'
+# 1. Принудительно подгружаем .env
+load_dotenv(override=True)
+
+# 2. Ищем токен spambandivodki_TOKEN или TOKEN
+TOKEN = os.getenv("spambandivodki_TOKEN") or os.getenv("TOKEN")
+
+if not TOKEN:
+  raise ValueError(
+      "❌ Ошибка: Токен не найден! Проверь, что в файле .env прописан"
+      " spambandivodki_TOKEN=..."
+  )
+
 bot = telebot.TeleBot(TOKEN)
 
-# 📋 ВАЙТ-ЛИСТ: Сюда через запятую вставляй числовые ID кентов, которым разрешён спам.
-# Твой личный ID тоже обязательно добавь сюда!
-WHITELIST_IDS = [
-    8547599215,
-    8038612348,
-    5546716281,
-    6558087689,
-    7332580044,
-]
-
-STOPPED_CHATS = []
+# Флаг для контроля работы спамера
+is_spamming = False
 
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    # Проверяем, есть ли пользователь в вайт-листе
-    if message.from_user.id not in WHITELIST_IDS:
-        bot.reply_to(message, "❌ **Доступ закрыт.** Тебя нет в банде!")
-        return
+def spam_loop(chat_id, text, delay):
+  global is_spamming
+  while is_spamming:
+    try:
+      bot.send_message(chat_id, text)
+      time.sleep(delay)
+    except Exception as e:
+      print(f"Ошибка при отправке: {e}")
+      time.sleep(1)
 
-    help_text = (
-        "😈 **ПРИВАТНЫЙ ПУЛЕМЕТНЫЙ БЕЗЛИМИТ** 😈\n\n"
-    
-        "🔥 _Доступ только для своих. Обойма не ограничена!_"
+
+@bot.message_handler(commands=["start"])
+def start_cmd(message):
+  bot.reply_to(
+      message,
+      "🤖 **Спам-бот на связи!**\n\n"
+      "Команды:\n"
+      "`/spam <текст>` — запустить спам\n"
+      "`/stop` — остановить спам",
+      parse_mode="Markdown",
+  )
+
+
+@bot.message_handler(commands=["spam"])
+def start_spam(message):
+  global is_spamming
+
+  if is_spamming:
+    bot.reply_to(message, "⚠️ Спамер уже работает! Сначала напиши /stop")
+    return
+
+  # Получаем текст после команды /spam
+  text_to_send = message.text.replace("/spam", "").strip()
+
+  if not text_to_send:
+    bot.reply_to(
+        message,
+        "❌ Укажи текст для спама!\nПример: `/spam Привет всем`",
+        parse_mode="Markdown",
     )
-    bot.reply_to(message, help_text, parse_mode="Markdown")
+    return
 
-@bot.message_handler(commands=['stop'])
-def stop_my_spam(message):
-    if message.from_user.id not in WHITELIST_IDS:
-        return
-    if message.chat.id not in STOPPED_CHATS:
-        STOPPED_CHATS.append(message.chat.id)
-    bot.reply_to(message, "**твой спам остановлен**")
+  is_spamming = True
+  bot.reply_to(
+      message,
+      f"🚀 **Спам запущен!**\nТекст: `{text_to_send}`\nНапиши /stop для отмены.",
+      parse_mode="Markdown",
+  )
 
-@bot.message_handler(commands=['spam'])
-def start_hardcore_spam(message):
-    # Жесткая проверка прав перед запуском пулемета
-    if message.from_user.id not in WHITELIST_IDS:
-        bot.reply_to(message, "❌ **Ошибка:** У тебя нет прав на использование этой команды!")
-        return
+  # Запускаем спам в отдельном потоке, чтобы бот не зависал и откликался на /stop
+  threading.Thread(
+      target=spam_loop, args=(message.chat.id, text_to_send, 1.0), daemon=True
+  ).start()
 
-    args = message.text.split()
-    
-    if len(args) < 3:
-        bot.reply_to(message, "❌ Пиши: `/spam [кол-во] [текст]`")
-        return
 
-    count_str = args[1]
-    if not count_str.isdigit():
-        bot.reply_to(message, "❌ Количество должно быть числом!")
-        return
-        
-    count = int(count_str)
-    spam_text = " ".join(args[2:])
+@bot.message_handler(commands=["stop"])
+def stop_spam(message):
+  global is_spamming
 
-        # ⚡ УМНОЕ ОПРЕДЕЛЕНИЕ СКОРОСТИ
-    if message.chat.type == 'private':
-        delay = 0.0  # В личке лупим на абсолютном максимуме скорости!
-        print(f"[!] Кент ID {message.from_user.id} (@{message.from_user.username}) запустил пулемет в ЛС на {count} соо.")
-    else:
-        delay = 0.1  # В группе притормаживаем до 0.15 сек, чтобы обходить ошибку 429
-        print(f"[!] Кент ID {message.from_user.id} (@{message.from_user.username}) запустил пулемет в ГРУППЕ на {count} соо.")
+  if not is_spamming:
+    bot.reply_to(message, "ℹ️ Спамер и так выключен.")
+    return
 
-    # Погнал чистый флуд
-    if message.chat.id in STOPPED_CHATS:
-        STOPPED_CHATS.remove(message.chat.id)
-    for i in range(count):
-        if message.chat.id in STOPPED_CHATS:
-            break
-        try:
-            bot.send_message(message.chat.id, f"{spam_text}")
-            if delay > 0:
-                time.sleep(delay)  # Спим только если мы в группе
-        except telebot.apihelper.ApiTelegramException as e:
-            if e.error_code == 429:
-                retry_after = e.result_json.get('parameters', {}).get('retry_after', 3)
-                print(f"[WAIT] Сервер ТГ словил флуд. Авто-пауза {retry_after} сек...")
-                time.sleep(retry_after)
-            else:
-                print(f"[ERROR] Ошибка API: {e}")
-                break
-        except Exception as error:
-            print(f"[ERROR] Сбой: {error}")
-            break
+  is_spamming = False
+  bot.reply_to(message, "🛑 **Спам успешно остановлен!**")
 
-            
-    bot.send_message(message.chat.id, "✅ Обойма выпущена! Спам окончен.")
 
 print("=" * 50)
-print("[MACHINE GUN] Приватный спамер успешно запущен!")
+print("[SPAMBOT] Спам-бот успешно запущен и готов к бою!")
 print("=" * 50)
 
-bot.infinity_polling()
+if __name__ == "__main__":
+  bot.infinity_polling(skip_pending=True)
