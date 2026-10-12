@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
-TELEGRAM_BOT_TOKEN = os.getenv("telegram_bot_TOKEN")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
 
 if not TELEGRAM_BOT_TOKEN or not VIRUSTOTAL_API_KEY:
