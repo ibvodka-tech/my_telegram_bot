@@ -7,8 +7,8 @@ time.sleep(15)
 
 print("погнали спамить.....")
 
-for i in range(100):
-    text = "я люблю тебя"
+for i in range(30):
+    text = "я люблю нурай"
     pyperclip.copy(text)
     pyautogui.hotkey("ctrl", "v")
     pyautogui.press("enter")
