@@ -8,15 +8,11 @@ from aiogram.filters import Command, CommandStart
 from dotenv import load_dotenv
 
 # 1. Загружаем переменные из .env принудительно
-load_dotenv(override=True)
-
-
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
 
 if not TELEGRAM_BOT_TOKEN or not VIRUSTOTAL_API_KEY:
-    raise ValueError("❌ Ошибка: Переменные не найдены в .env! Проверь файл.")
-
+    raise ValueError("❌ Переменные не найдены в окружении Railway!")
 # Инициализация бота и диспетчера
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
